@@ -31,6 +31,7 @@ Make sure you have the following installed on your system:
 - **Node.js** (v14 or higher) - [Download](https://nodejs.org/)
 - **npm** (comes with Node.js)
 - **PostgreSQL** (v12 or higher) - [Download](https://www.postgresql.org/)
+- **Deployed project link**  - [Click](https://project-eight-drab-17.vercel.app/)
 
 ## Installation
 
