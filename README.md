@@ -80,20 +80,55 @@ const pool = new Pool({
 Connect to PostgreSQL and create the database:
 
 ```sql
-CREATE DATABASE shamba_records;
+CREATE DATABASE crop_db;
 ```
 
 Create the required tables (run in the database):
 
 ```sql
 CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  role VARCHAR(50) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role VARCHAR(20) CHECK (role IN ('ADMIN', 'AGENT'))
 );
+
+-- Fields Table
+CREATE TABLE fields (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    crop_type VARCHAR(50),
+    planting_date DATE NOT NULL,
+    current_stage VARCHAR(20) DEFAULT 'Planted', -- Planted, Growing, Ready, Harvested
+    agent_id INTEGER REFERENCES users(id),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Observations Table
+CREATE TABLE observations (
+    id SERIAL PRIMARY KEY,
+    field_id INTEGER REFERENCES fields(id) ON DELETE CASCADE,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Create an Admin and an Agent
+INSERT INTO users (name, email, password_hash, role) VALUES 
+('Alice Coordinator', 'admin@farm.com', 'password123', 'ADMIN'),
+('Bob Fieldman', 'agent@farm.com', 'password123', 'AGENT');
+
+-- Create Fields (Assigned to Bob/Agent ID 2)
+INSERT INTO fields (name, crop_type, planting_date, current_stage, agent_id) VALUES 
+('North Valley', 'Corn', '2026-03-01', 'Growing', 2),
+('East Creek', 'Soybeans', '2026-04-20', 'Planted', 2),
+('Old Ridge', 'Wheat', '2026-01-10', 'Ready', 2);
+
+-- Add an initial observation
+INSERT INTO observations (field_id, note) VALUES 
+(1, 'Irrigation system checked, looks good.');
+
 ```
 
 ### 3. Frontend Setup
