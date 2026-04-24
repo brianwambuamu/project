@@ -33,6 +33,17 @@ Make sure you have the following installed on your system:
 - **PostgreSQL** (v12 or higher) - [Download](https://www.postgresql.org/)
 - **Deployed project link**  - [Click](https://project-eight-drab-17.vercel.app/)
 
+## Demo Credentials:
+```
+Admin: admin@farm.com
+Pass:  password123
+
+Agent1: agent@farm.com
+Pass:   password123
+
+Agent2: agentii@farm.com
+Pass:   password123
+```
 ## Installation
 
 ### 1. Clone/Navigate to the Project
