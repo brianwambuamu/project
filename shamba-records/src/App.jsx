@@ -1,13 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { Sprout, Edit3, MessageSquare, PlusCircle, UserPlus } from 'lucide-react';
+import { Sprout, Edit3, MessageSquare, PlusCircle, UserPlus, LayoutDashboard, AlertTriangle, CheckCircle2, LogOut } from 'lucide-react';
 import './App.css';
 
 const App = () => {
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user')));
   const [fields, setFields] = useState([]);
   const [observations, setObservations] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   
   // Modals
@@ -20,9 +19,38 @@ const App = () => {
   const [newFieldData, setNewFieldData] = useState({ name: '', crop_type: '' });
   const [newAgentData, setNewAgentData] = useState({ name: '', email: '', password: '' });
 
+  // --- 5. Field Status Logic ---
+  const calculateStatus = useCallback((field) => {
+    if (field.current_stage === 'Harvested') return 'Completed';
+    
+    const plantingDate = new Date(field.planting_date);
+    const today = new Date();
+    const daysSincePlanting = Math.floor((today - plantingDate) / (1000 * 60 * 60 * 24));
+
+    // Logic: At Risk if stuck in a stage too long
+    if (field.current_stage === 'Planted' && daysSincePlanting > 14) return 'At Risk';
+    if (field.current_stage === 'Growing' && daysSincePlanting > 45) return 'At Risk';
+    
+    return 'Active';
+  }, []);
+
+  // --- 6. Dashboard Calculations ---
+  const stats = useMemo(() => {
+    const total = fields.length;
+    let atRisk = 0, completed = 0, active = 0;
+
+    fields.forEach(f => {
+      const s = calculateStatus(f);
+      if (s === 'At Risk') atRisk++;
+      else if (s === 'Completed') completed++;
+      else active++;
+    });
+
+    return { total, atRisk, completed, active };
+  }, [fields, calculateStatus]);
+
   const fetchData = useCallback(async () => {
     if (!user?.token) return;
-    setLoading(true);
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       const fieldRes = await axios.get('http://localhost:5000/api/fields', config);
@@ -34,7 +62,7 @@ const App = () => {
       }
     } catch (err) {
       if (err.response?.status === 401) handleLogout();
-    } finally { setLoading(false); }
+    }
   }, [user]);
 
   useEffect(() => { if (user) fetchData(); }, [user, fetchData]);
@@ -61,10 +89,8 @@ const App = () => {
       });
       setShowAgentModal(false);
       setNewAgentData({ name: '', email: '', password: '' });
-      alert("New Agent created successfully!");
-    } catch (err) {
-      alert(err.response?.data?.error || "Failed to create agent");
-    }
+      alert("New Agent created!");
+    } catch (err) { alert(err.response?.data?.error || "Failed"); }
   };
 
   const handleAddField = async (e) => {
@@ -76,7 +102,6 @@ const App = () => {
       setShowAddModal(false);
       setNewFieldData({ name: '', crop_type: '' });
       fetchData();
-      alert("Field registered!");
     } catch (err) { alert("Failed to add field"); }
   };
 
@@ -88,8 +113,7 @@ const App = () => {
       );
       setSelectedField(null);
       fetchData();
-      alert("Update Success!");
-    } catch (err) { alert("Failed to update"); }
+    } catch (err) { alert("Update failed"); }
   };
 
   if (!user) {
@@ -98,7 +122,7 @@ const App = () => {
         <form onSubmit={handleLogin} className="p-8 bg-white shadow-xl rounded-lg w-96 border">
           <div className="flex flex-col items-center mb-6">
             <Sprout className="text-green-600 w-12 h-12 mb-2" />
-            <h2 className="text-2xl font-bold text-gray-800 text-center">CropTracker</h2>
+            <h2 className="text-2xl font-bold text-gray-800 text-center text-green-800">Shamba Records</h2>
           </div>
           <div className="space-y-4">
             <input className="w-full p-3 border rounded-md" placeholder="Email" type="email" required onChange={e => setLoginData({...loginData, email: e.target.value})} />
@@ -111,62 +135,67 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2 text-green-800"><Sprout /> CropTracker</h1>
+          <h1 className="text-3xl font-black flex items-center gap-2 text-green-800"><Sprout size={32}/> SHAMBA RECORDS</h1>
           <div className="flex items-center gap-4">
             {user.role === 'ADMIN' && (
-              <button 
-                onClick={() => setShowAgentModal(true)}
-                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition shadow-md"
-              >
-                <UserPlus size={20}/> Add Agent
-              </button>
+              <button onClick={() => setShowAgentModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition shadow-md"><UserPlus size={18}/> Add Agent</button>
             )}
             {user.role === 'AGENT' && (
-              <button 
-                onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 transition shadow-md"
-              >
-                <PlusCircle size={20}/> New Field
-              </button>
+              <button onClick={() => setShowAddModal(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-green-700 transition shadow-md"><PlusCircle size={18}/> New Field</button>
             )}
-            <div className="bg-white p-2 px-4 rounded-full shadow-sm border">
-              <span className="text-gray-600 font-medium mr-4">{user.name} ({user.role})</span>
-              <button onClick={handleLogout} className="text-red-500 font-bold text-sm">Logout</button>
-            </div>
+            <button onClick={handleLogout} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition"><LogOut/></button>
           </div>
+        </div>
+
+        {/* DASHBOARD STATS */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard title="Total Fields" value={stats.total} icon={<LayoutDashboard className="text-gray-400" />} color="border-gray-300" />
+          <StatCard title="Active" value={stats.active} icon={<Sprout className="text-green-500" />} color="border-green-500" />
+          <StatCard title="At Risk" value={stats.atRisk} icon={<AlertTriangle className="text-red-500" />} color="border-red-500" />
+          <StatCard title="Completed" value={stats.completed} icon={<CheckCircle2 className="text-blue-500" />} color="border-blue-500" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className={`bg-white rounded-xl shadow-md border ${user.role === 'ADMIN' ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-            <div className="p-4 border-b font-bold bg-gray-50 text-gray-700">Managed Fields</div>
+            <div className="p-4 border-b font-bold bg-gray-50 text-gray-700">Field Monitoring</div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 text-xs text-gray-400 uppercase">
                   <tr>
                     <th className="p-4 text-left">Field</th>
                     <th className="p-4 text-left">Crop</th>
-                    {user.role === 'ADMIN' && <th className="p-4 text-left">Agent</th>}
+                    <th className="p-4 text-left">Status</th>
                     <th className="p-4 text-left">Stage</th>
                     <th className="p-4 text-left">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y text-sm">
-                  {fields.map(f => (
-                    <tr key={f.id} className="hover:bg-gray-50">
-                      <td className="p-4 font-bold">{f.name}</td>
-                      <td className="p-4">{f.crop_type}</td>
-                      {user.role === 'ADMIN' && <td className="p-4 text-blue-600 font-medium">{f.agent_name}</td>}
-                      <td className="p-4 capitalize">{f.current_stage}</td>
-                      <td className="p-4">
-                        {user.role === 'AGENT' && (
-                          <button onClick={() => {setSelectedField(f); setUpdateData({stage: f.current_stage, note: ''});}} className="text-green-600 hover:underline flex items-center gap-1"><Edit3 size={14}/> Update</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {fields.map(f => {
+                    const status = calculateStatus(f);
+                    return (
+                      <tr key={f.id} className="hover:bg-gray-50">
+                        <td className="p-4 font-bold">{f.name}</td>
+                        <td className="p-4">{f.crop_type}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                            status === 'At Risk' ? 'bg-red-100 text-red-600' : 
+                            status === 'Completed' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+                          }`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="p-4 capitalize">{f.current_stage}</td>
+                        <td className="p-4">
+                          {user.role === 'AGENT' && (
+                            <button onClick={() => {setSelectedField(f); setUpdateData({stage: f.current_stage, note: ''});}} className="text-green-600 hover:underline flex items-center gap-1 font-bold"><Edit3 size={14}/> Update</button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -174,7 +203,7 @@ const App = () => {
 
           {user.role === 'ADMIN' && (
             <div className="bg-white rounded-xl shadow-md border overflow-hidden">
-              <div className="p-4 border-b font-bold bg-gray-50 flex items-center gap-2"><MessageSquare size={18}/> Activity Log</div>
+              <div className="p-4 border-b font-bold bg-gray-50 flex items-center gap-2"><MessageSquare size={18}/> Activity Insights</div>
               <div className="divide-y max-h-[500px] overflow-y-auto">
                 {observations.map(obs => (
                   <div key={obs.id} className="p-4 text-xs">
@@ -192,64 +221,67 @@ const App = () => {
         </div>
       </div>
 
-      {/* MODAL: ADD AGENT (ADMIN ONLY) */}
+      {/* MODALS (Agent/Field/Update) */}
       {showAgentModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold mb-4 text-blue-800">Create New Agent Account</h3>
-            <form onSubmit={handleAddAgent} className="space-y-4">
-              <input required className="w-full p-2 border rounded" placeholder="Agent Full Name" onChange={e => setNewAgentData({...newAgentData, name: e.target.value})}/>
-              <input required className="w-full p-2 border rounded" type="email" placeholder="Email Address" onChange={e => setNewAgentData({...newAgentData, email: e.target.value})}/>
-              <input required className="w-full p-2 border rounded" type="password" placeholder="Temporary Password" onChange={e => setNewAgentData({...newAgentData, password: e.target.value})}/>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowAgentModal(false)} className="flex-1 py-2 border rounded">Cancel</button>
-                <button type="submit" className="flex-1 py-2 bg-blue-600 text-white rounded font-bold">Create Agent</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title="Create New Agent" onClose={() => setShowAgentModal(false)}>
+          <form onSubmit={handleAddAgent} className="space-y-4">
+            <input required className="w-full p-2 border rounded" placeholder="Full Name" onChange={e => setNewAgentData({...newAgentData, name: e.target.value})}/>
+            <input required className="w-full p-2 border rounded" type="email" placeholder="Email" onChange={e => setNewAgentData({...newAgentData, email: e.target.value})}/>
+            <input required className="w-full p-2 border rounded" type="password" placeholder="Password" onChange={e => setNewAgentData({...newAgentData, password: e.target.value})}/>
+            <button className="w-full py-2 bg-blue-600 text-white rounded font-bold">Create Agent</button>
+          </form>
+        </Modal>
       )}
 
-      {/* MODAL: ADD FIELD (AGENT ONLY) */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold mb-4 text-green-800">Register New Field</h3>
-            <form onSubmit={handleAddField} className="space-y-4">
-              <input required className="w-full p-2 border rounded" placeholder="Field Name" onChange={e => setNewFieldData({...newFieldData, name: e.target.value})}/>
-              <input required className="w-full p-2 border rounded" placeholder="Crop Type" onChange={e => setNewFieldData({...newFieldData, crop_type: e.target.value})}/>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-2 border rounded">Cancel</button>
-                <button type="submit" className="flex-1 py-2 bg-green-600 text-white rounded font-bold">Create Field</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title="Register Field" onClose={() => setShowAddModal(false)}>
+          <form onSubmit={handleAddField} className="space-y-4">
+            <input required className="w-full p-2 border rounded" placeholder="Field Name" onChange={e => setNewFieldData({...newFieldData, name: e.target.value})}/>
+            <input required className="w-full p-2 border rounded" placeholder="Crop Type" onChange={e => setNewFieldData({...newFieldData, crop_type: e.target.value})}/>
+            <button className="w-full py-2 bg-green-600 text-white rounded font-bold">Create Field</button>
+          </form>
+        </Modal>
       )}
 
-      {/* MODAL: UPDATE FIELD */}
       {selectedField && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Update {selectedField.name}</h3>
-            <form onSubmit={submitUpdate} className="space-y-4">
-              <select className="w-full p-2 border rounded" value={updateData.stage} onChange={e => setUpdateData({...updateData, stage: e.target.value})}>
-                <option value="Planted">Planted</option>
-                <option value="Growing">Growing</option>
-                <option value="Ready">Ready</option>
-                <option value="Harvested">Harvested</option>
-              </select>
-              <textarea className="w-full p-2 border rounded h-24" required placeholder="Observations..." onChange={e => setUpdateData({...updateData, note: e.target.value})}></textarea>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setSelectedField(null)} className="flex-1 py-2 border rounded">Cancel</button>
-                <button type="submit" className="flex-1 py-2 bg-green-600 text-white rounded font-bold">Submit Update</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title={`Update ${selectedField.name}`} onClose={() => setSelectedField(null)}>
+          <form onSubmit={submitUpdate} className="space-y-4">
+            <select className="w-full p-2 border rounded" value={updateData.stage} onChange={e => setUpdateData({...updateData, stage: e.target.value})}>
+              <option value="Planted">Planted</option>
+              <option value="Growing">Growing</option>
+              <option value="Ready">Ready</option>
+              <option value="Harvested">Harvested</option>
+            </select>
+            <textarea className="w-full p-2 border rounded h-24" required placeholder="Observations..." onChange={e => setUpdateData({...updateData, note: e.target.value})}></textarea>
+            <button className="w-full py-2 bg-green-600 text-white rounded font-bold">Submit</button>
+          </form>
+        </Modal>
       )}
     </div>
   );
 };
+
+// Reusable Components
+const StatCard = ({ title, value, icon, color }) => (
+  <div className={`bg-white p-4 rounded-xl shadow-sm border-t-4 ${color}`}>
+    <div className="flex justify-between items-start">
+      <div>
+        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">{title}</p>
+        <p className="text-2xl font-black text-gray-800">{value}</p>
+      </div>
+      {icon}
+    </div>
+  </div>
+);
+
+const Modal = ({ title, children, onClose }) => (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+      <h3 className="text-xl font-bold mb-4 text-gray-800">{title}</h3>
+      {children}
+      <button onClick={onClose} className="w-full mt-2 py-2 text-gray-400 text-sm hover:underline">Cancel</button>
+    </div>
+  </div>
+);
 
 export default App;
