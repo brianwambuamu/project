@@ -2,6 +2,20 @@
 
 A full-stack web application for agricultural record management. The project consists of a React-based frontend and an Express.js backend with PostgreSQL database.
 
+## Screenshots
+### Login Page
+![Admin Page](shamba-records/src/assets/Screenshot%202026-04-26%20214502.png)
+### Admin Page
+![Admin Page](shamba-records/src/assets/Screenshot%202026-04-26%20214537.png)
+
+### Add Agent Page
+![Agent Page](shamba-records/src/assets/Screenshot%202026-04-26%20214600.png)
+### Agent Page
+![Agent Page](shamba-records/src/assets/Screenshot%202026-04-26%20214637.png)
+### Add Field Page
+![Agent Page](shamba-records/src/assets/Screenshot%202026-04-26%20214656.png)
+### Action Page
+![Agent Page](shamba-records/src/assets/Screenshot%202026-04-26%20214724.png)
 ## Project Structure
 
 ```
