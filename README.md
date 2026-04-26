@@ -1,6 +1,6 @@
 # Shamba Records
 
-A full-stack web application for agricultural record management. The project consists of a React-based frontend and an Express.js backend with PostgreSQL database.
+A full-stack web application for agricultural record management. The project consists of a React-based frontend and an Express.js and Node.js backend with PostgreSQL database.
 
 ## Screenshots
 ### Login Page
